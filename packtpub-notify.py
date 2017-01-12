@@ -7,6 +7,7 @@ import pkntbasics
 import os
 import pkntbook
 import pkntemail
+import pkntdb
 
 
 # In[2]:
@@ -28,6 +29,10 @@ pkntbasics.config_loggers(LOGLEVEL)
 
 book = pkntbook.get_book(URL)
 conn = pkntemail.smtp_connection(SMTPSERVER, SMTPPORT, USER, PASS)
-pkntemail.send_book(book, conn, USER, ', '.join(['gouveia.arthur@gmail.com','rodolfo.sousa.ti@gmail.com']))
+
+recipients = pkntdb.get_recipients()
+
+pkntemail.send_book(book, conn, USER, recipients)
+
 conn.quit()
 
