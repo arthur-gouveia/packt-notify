@@ -1,23 +1,44 @@
 
 # coding: utf-8
 
-# In[5]:
+# In[10]:
 
 import sqlite3
+import pkntbasics
 
 
-# In[3]:
+# In[7]:
+
+pkntbasics.config_loggers('DEBUG')
+logger = pkntbasics.DBLOGGER
+
+
+# In[2]:
 
 def sign_up(email_addr, id_last_book=None):
+    import time
+    global logger
+    
     with sqlite3.connect('packt-notify.db') as dbconn:
         cur = dbconn.cursor()
-        cur.execute('''INSERT INTO tb_emails (nom_addr, dt_in, id_last_book)
-                        VALUES (?, ?, ?)''', (email_addr, time.strftime('%Y-%m-%d %H:%M:%S'), id_last_book))
-
+        if (isinstance(email_addr, str)):
+            logger.debug('Inserting single value %s' %email_addr)
+            cur.execute('''INSERT INTO tb_emails (nom_addr, dt_in, id_last_book)
+                            VALUES (?, ?, ?)''', (email_addr, time.strftime('%Y-%m-%d'), id_last_book))
+        elif (isinstance(email_addr, list)):
+            now = time.strftime('%Y-%m-%d')
+            to_insert = [(item, now, id_last_book) for item in email_addr]
+            logger.debug('Inserting a list of %d values' %len(to_insert))
+            cur.executemany('''INSERT INTO tb_emails (nom_addr, dt_in, id_last_book)
+                               VALUES (?, ?, ?)''', to_insert)
+        else:
+            raise TypeError
         dbconn.commit()
 
 
 def get_last_book():
+    global logger
+    
     logger.debug('Connecting to database to get last book')
     with sqlite3.connect('packt-notify.db') as dbconn:
         cur = dbconn.cursor()
@@ -28,6 +49,8 @@ def get_last_book():
 
 
 def book_exists(bookname, quantity=2):
+    global logger
+    
     logger.debug('Connecting to database to check book existence')
     with sqlite3.connect('packt-notify.db') as dbconn:
         cur = dbconn.cursor()
@@ -41,6 +64,8 @@ def book_exists(bookname, quantity=2):
 
 
 def insert_book(bookname):
+    import time
+    
     global logger
     
     logger.debug('Connecting to database to insert book')
@@ -52,14 +77,12 @@ def insert_book(bookname):
         dbconn.commit()
         
 def get_recipients():
+    global logger
+    
     with sqlite3.connect('packt-notify.db') as dbconn:
         cur = dbconn.cursor()
+        logger.debug('Querying tb_emails')
         results = cur.execute('SELECT nom_addr FROM tb_emails')
-    
-    return [result[1] for result in results]
-
-
-# In[6]:
-
-get_recipients()
+        
+    return results
 

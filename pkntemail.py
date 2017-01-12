@@ -153,11 +153,18 @@ def select_emails(pop_conn):
 
 def send_book(bookdict, smtp_conn, from_, to):
     msg = create_book_message(bookdict)
-    
+        
     msg['Subject'] = "Free Book - {0[name]}".format(bookdict)
     msg['From'] = from_
-    msg['Bcc'] = to
     msg['To'] = 'Undisclosed Recipients <packtpubnotify@gmail.com>'
+   
+    while True:
+        results = to.fetchmany(100)
+        if not results:
+            break
+        else:
+            adresses = [result[0] for result in results]
+            msg['Bcc'] = ', '.join(adresses)
     
     smtp_conn.send_message(msg)
 

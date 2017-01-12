@@ -31,7 +31,7 @@ def get_logger(lvl, alias):
     return logger
 
 def create_database():
-    import sqlite
+    import sqlite3
     
     with sqlite3.connect('packt-notify.db') as dbconn:
         cur = dbconn.cursor()
