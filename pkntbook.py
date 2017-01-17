@@ -4,8 +4,6 @@
 # In[1]:
 
 import pkntbasics
-#import sqlite3
-#import time
 import urllib.request
 from bs4 import BeautifulSoup
 
@@ -36,7 +34,7 @@ def get_book(url):
     bookname = soup.find_all('div', class_='dotd-title')[0].h2.string.strip()
     logger.debug('Bookname: ' + bookname)
     bookcover = 'http:'+soup.find_all('img', class_='imagecache-dotd_main_image')[0]['src']
-    bookdescription = soup.find_all('div', class_='dotd-main-book-form')[0].previous_sibling.previous_sibling.text.strip()
+    bookdescription = str(soup.find_all('div', class_='dotd-main-book-form')[0].previous_sibling.previous_sibling)
     
     book = dict(name=bookname, description=bookdescription, coverimage=bookcover)
     return book

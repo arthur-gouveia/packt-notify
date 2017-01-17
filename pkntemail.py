@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[29]:
+# In[1]:
 
 import pkntbasics
 from email.mime.multipart import MIMEMultipart
@@ -12,7 +12,7 @@ import sqlite3
 import time
 
 
-# In[22]:
+# In[2]:
 
 logger = pkntbasics.MAILLOGGER
 
@@ -23,13 +23,7 @@ USER = os.environ['USER']
 PASS = os.environ['PASS']
 
 
-# ```A logica aqui e' buscar os novos emails
-# Verificar os emails a descadastrar e fazer o cancelamento
-# Verificar os emails a cadastrar e enviar o livro atual
-#     Se enviou com sucesso cadastrar o email com o id do livro
-#     Se falhou o envio cadastrar o email com o id NULL```
-
-# In[25]:
+# In[3]:
 
 def pop_connection(server, user, pass_):
     '''
@@ -181,8 +175,9 @@ def create_book_message(bookdict):
       <body>
         <h2>The free PacktPub book of the day is {0[name]}</h2>
         <img src="{0[coverimage]}"><br>
-        <p>{0[description]}<br>
-           Click <a href="https://www.packtpub.com/packt/offers/free-learning">here</a> to download.
+        <p>{0[description]}</p>
+        <p>
+           <b>Click <a href="https://www.packtpub.com/packt/offers/free-learning">here</a> to download.</b>
         </p>
       </body>
     </html>
@@ -200,33 +195,3 @@ def create_book_message(bookdict):
 
     return msg
 
-
-# pop_conn = pop_connection(POPSERVER, USER, PASS)
-# messages = select_emails(pop_conn)
-# pop_conn.quit()
-#     
-# for id, message in messages.items():
-#     email_addr = message['From']
-#     logger.debug('Email to insert '+email_addr)
-#     action = message['Subject']
-#     logger.debug('Action to perform '+action)
-#     if 'entrar' in action.lower():
-#         try:
-#             logger.debug('Trying to send email')
-#             if send_book(email_addr):
-#                 logger.debug('Email sent succesfully')
-#                 id_livro, nome_livro = get_last_book()
-#                 logger.debug('Last book is '+nome_livro)
-#             else:
-#                 id_livro = none
-#             sign_up(email_addr, id_livro)
-#         except:
-#             logger.debug('Unable to delete message '+str(id))
-#             print('Unable to delete message.')
-#         finally:
-#             conexão_pop.quit()
-#             logger.debug('Closed the connection')
-
-# smtp_conn.quit()
-
-# smtp_conn = smtp_connection(SMTPSERVER, SMTPPORT, USER, PASS)
