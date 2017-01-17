@@ -4,6 +4,7 @@
 # In[ ]:
 
 import pkntbasics
+import telepot
 
 
 # In[ ]:

@@ -1,21 +1,23 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 BOOKLOGGER = None
 MAILLOGGER = None
 DBLOGGER = None
+BOTLOGGER = None
 
 def config_loggers(lvl):
     global BOOKLOGGER
     global MAILLOGGER
     global DBLOGGER
+    global BOTLOGGER
     
     BOOKLOGGER = get_logger(lvl, 'pkntbook')
     MAILLOGGER = get_logger(lvl, 'pkntmail')
     DBLOGGER = get_logger(lvl, 'pkntdb')
-    
+    BOTLOGGER = get_logger(lvl, 'pkntbot')
 
 def get_logger(lvl, alias):
     import logging
