@@ -1,18 +1,21 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 import pkntbasics
+import email
+from imaplib import IMAP4_SSL
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.parser import Parser
 import os
-import poplib
+import smtplib
 import sqlite3
 import time
 
 
-# In[2]:
+# In[ ]:
 
 logger = pkntbasics.MAILLOGGER
 
@@ -23,48 +26,95 @@ USER = os.environ['USER']
 PASS = os.environ['PASS']
 
 
-# In[3]:
+# In[ ]:
 
-def pop_connection(server, user, pass_):
+def fetch_emails(imap_conn, subject):
     '''
-    pop_connection(popserver, user, pass_)
-    server: string - Address of the server to connecto to
-    user:   string - Username for login
-    pass_:  string - Password for login
+    fetch_emails(imap_conn, subject)
+    imap_conn: A ssl.SSLContext object. For example, the returned value from pop_connection
+    subject: The email subject to be searched
     
-    Returns pop_conn: A ssl.SSLContext object
-    
-    Connects to a pop3 server through SSL and returns the connection - ans ssl.SSLContext object
-    
-    
-    Example:
-    
-    >>> import pkntemail
-    >>> conn = pkntemail.pop_connection(POPSERVER, USER, PASS)
-    >>> conn.getwelcome() #doctest: +ELLIPSIS
-    b'+OK ... ready for requests ...'
-    >>> conn.context #doctest: +ELLIPSIS
-    <ssl.SSLContext object at 0x...>
-    >>> conn.quit()
-    b'+OK Farewell.'
+    Returns emails: A dict where the keys are the message ids and the values are email adresses
     '''
-    logger.debug('Connecting to '+server)
-    pop_conn = poplib.POP3_SSL(server)
-    try:
-        logger.debug('Log in')
-        pop_conn.user(user)
-        pop_conn.pass_(pass_)
-    except poplib.error_proto:
-        logger.error('Authentication failed for user '+user)
-        pop_conn.quit()
-        return poplib.error_proto
-    else:
-        return pop_conn
-
-
-def smtp_connection(server, port, user, pass_):
-    import smtplib
+    global logger
     
+    # Lists all messaages on the server where HEADER.SUBJECT is subject 
+    _, ids = imap.uid('search', None, '(subject "{}")'.format(subject))
+    # The return value is a tuple where the second element is a list containing the ids as a space separated string
+    ids = ids[0].split()
+    logger.debug('Found {} emails with subject "{}"'.format(len(ids), subject))
+    emails = {}
+    # Loops through the ids list
+    for id in ids:
+        logger.debug('Fetching email id ', id)
+        # Fetches the FROM address
+        _, res = imap.uid('fetch', id, 'BODY[HEADER.FIELDS (FROM)]')
+        # The result is a tuple where the second element is a list of tuples
+        # I know, it's complicated... Blame on imaplib!...
+        _, res = res[0]
+        # Decodes from bytes to string
+        res = res.decode('utf-8')
+        res = res[5:].strip() # Removes 'From:' at the beginning of the string
+        logger.debug('id: {}, email: {}'.format(id, res))
+        emails[id] = res
+    
+    return emails
+
+
+def get_emails(server, user, pass_):
+    with IMAP4_SSL(server) as imap:
+        imap.login(user, pass_)
+        imap.select("INBOX")
+
+        emails_to_insert = fetch_emails(imap, "entrar")
+        emails_to_remove = fetch_emails(imap, "sair")
+    
+    selected_emails = dict(IN=emails_to_insert,
+                           OUT=emails_to_remove)
+    
+    return selected_emails
+
+def remove_emails(server, user, pass_, uids):
+    with IMAP4_SSL(IMAPSERVER) as imap:
+        imap.login(USER, PASS)
+        imap.select("[Gmail]/Lixeira")
+        imap.uid('STORE', uids, '+FLAGS', r'\Deleted')
+    
+
+def create_book_message(bookdict):
+    # Create message container - the correct MIME type is multipart/alternative.
+    msg = MIMEMultipart('alternative')
+
+    # Create the body of the message (a plain-text and an HTML version).
+    text = "The PacktPub free book of the day is {0[name]}\n\nClick here to download:\nhttps://www.packtpub.com/packt/offers/free-learning".format(bookdict)
+    html = """
+    <html>
+      <head></head>
+      <body>
+        <h2>The free PacktPub book of the day is {0[name]}</h2>
+        <img src="{0[coverimage]}"><br>
+        <p>{0[description]}</p>
+        <p>
+           <b>Click <a href="https://www.packtpub.com/packt/offers/free-learning">here</a> to download.</b>
+        </p>
+      </body>
+    </html>
+    """.format(bookdict)
+
+    # Record the MIME types of both parts - text/plain and text/html.
+    part1 = MIMEText(text, 'plain')
+    part2 = MIMEText(html, 'html')
+
+    # Attach parts into message container.
+    # According to RFC 2046, the last part of a multipart message, in this case
+    # the HTML message, is best and preferred.
+    msg.attach(part1)
+    msg.attach(part2)
+
+    return msg
+
+
+def smtp_connection(server, port, user, pass_):   
     '''
     pop_connection(popserver, user, pass_)
     server: string - Address of the server to connecto to
@@ -101,49 +151,6 @@ def smtp_connection(server, port, user, pass_):
     else:
         return smtp_conn
 
-def fetch_emails(pop_conn):
-    '''
-    fetch_emails(pop_conn)
-    pop_conn: A ssl.SSLContext object. For example, the returned value from pop_connection
-    
-    Returns messages: A dict where the keys are the message ids and the values are email.message objects
-    '''
-    from email.parser import Parser
-    
-    global logger
-    # Lists all the messages on the server
-    _, items, _ = pop_conn.list()
-    logger.info('Retrieved %d items from server' %len(items))
-    # Retrieves the messages
-    messages = {i: pop_conn.retr(i) for i in range(1, len(items)+1)}
-    # Decodes from bytes to strings
-    messages = {key: [m.decode() for m in messages[key][1]] for key in messages.keys()}
-    # Joins all the list strings in a large string separated by a newline \n
-    messages = {key: '\n'.join(messages[key]) for key in messages.keys()}
-    # Parses the strings to an email.message object
-    messages = {key: Parser().parsestr(messages[key]) for key in messages.keys()}
-    
-    return messages
-
-
-def select_emails(pop_conn):
-    messages = fetch_emails(pop_conn)
-    
-    selected_emails = {}
-    emails_to_insert = set()
-    emails_to_remove = set()
-    
-    for message in messages:
-        action = message['Subject']
-        if 'entrar' in action.lower():
-            emails_to_inser.add(message['From'])
-        if 'sair' in action.lower():
-            emails_to_remove.add(message['From'])
-        selected_emails['in'] = emails_to_insert
-        selected_emails['out'] = emails_to_remove
-    
-    return selected_emails
-
 
 def send_book(bookdict, smtp_conn, from_, to):
     msg = create_book_message(bookdict)
@@ -161,37 +168,5 @@ def send_book(bookdict, smtp_conn, from_, to):
             msg['Bcc'] = ', '.join(adresses)
     
     smtp_conn.send_message(msg)
-
-
-def create_book_message(bookdict):
-    # Create message container - the correct MIME type is multipart/alternative.
-    msg = MIMEMultipart('alternative')
-
-    # Create the body of the message (a plain-text and an HTML version).
-    text = "The PacktPub free book of the day is {0[name]}\n\nClick here to download:\nhttps://www.packtpub.com/packt/offers/free-learning".format(bookdict)
-    html = """
-    <html>
-      <head></head>
-      <body>
-        <h2>The free PacktPub book of the day is {0[name]}</h2>
-        <img src="{0[coverimage]}"><br>
-        <p>{0[description]}</p>
-        <p>
-           <b>Click <a href="https://www.packtpub.com/packt/offers/free-learning">here</a> to download.</b>
-        </p>
-      </body>
-    </html>
-    """.format(bookdict)
-
-    # Record the MIME types of both parts - text/plain and text/html.
-    part1 = MIMEText(text, 'plain')
-    part2 = MIMEText(html, 'html')
-
-    # Attach parts into message container.
-    # According to RFC 2046, the last part of a multipart message, in this case
-    # the HTML message, is best and preferred.
-    msg.attach(part1)
-    msg.attach(part2)
-
-    return msg
+    smtp_conn.close()
 
