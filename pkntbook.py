@@ -31,10 +31,10 @@ def get_book(url):
     soup = get_page(url)
     
     logger.debug('Getting bookname')
-    bookname = soup.find_all('div', class_='dotd-title')[0].h2.string.strip()
+    bookname = soup.find('div', class_='dotd-title').get_text().strip()
     logger.debug('Bookname: ' + bookname)
-    bookcover = 'http:'+soup.find_all('img', class_='imagecache-dotd_main_image')[0]['src']
-    bookdescription = str(soup.find_all('div', class_='dotd-main-book-form')[0].previous_sibling.previous_sibling)
+    bookcover = 'http:'+soup.find('img', class_='imagecache-dotd_main_image')['src']
+    bookdescription = str(soup.find('div', class_='dotd-main-book-form').previous_sibling.previous_sibling)
     
     book = dict(name=bookname, description=bookdescription, coverimage=bookcover)
     return book

@@ -1,19 +1,19 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 import sqlite3
 import pkntbasics
 
 
-# In[2]:
+# In[ ]:
 
 pkntbasics.config_loggers('DEBUG')
 logger = pkntbasics.DBLOGGER
 
 
-# In[3]:
+# In[ ]:
 
 def sign_up(email_addr, id_last_book=None):
     import time
